@@ -1,0 +1,50 @@
+{
+  "name": "pr-pulse",
+  "version": "0.1.0",
+  "description": "PR Pulse — a developer-focused desktop widget for GitHub pull request activity.",
+  "main": "out/main/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "dist": "npm run build && electron-builder",
+    "dist:mac": "npm run build && electron-builder --mac dmg",
+    "dist:win": "npm run build && electron-builder --win nsis"
+  },
+  "keywords": [
+    "electron",
+    "github",
+    "pull-requests",
+    "widget",
+    "pr-pulse"
+  ],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vasilisnakos/pr-pulse.git"
+  },
+  "homepage": "https://github.com/vasilisnakos/pr-pulse#readme",
+  "bugs": {
+    "url": "https://github.com/vasilisnakos/pr-pulse/issues"
+  },
+  "dependencies": {
+    "@octokit/rest": "^22.0.1",
+    "electron-store": "^11.0.2",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.2.0",
+    "concurrently": "^9.2.1",
+    "electron": "^41.2.2",
+    "electron-builder": "^26.8.1",
+    "electron-vite": "^5.0.0",
+    "typescript": "^6.0.3",
+    "vite": "^7.3.2",
+    "wait-on": "^9.0.5"
+  }
+}

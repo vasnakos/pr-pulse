@@ -1,0 +1,176 @@
+import {
+  BrowserWindow,
+  Menu,
+  Tray,
+  app,
+  nativeImage,
+  shell,
+} from "electron";
+import { fileURLToPath } from "node:url";
+
+import { getConfig, getWindowBounds, setWindowBounds } from "./store";
+
+const traySvg = `
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <rect width="16" height="16" rx="3" fill="#0b0f0c" />
+  <path d="M3 4h10v2H5v2h6v2H5v2h8v-1" stroke="#00ff9c" stroke-width="1.5" fill="none" stroke-linecap="round" />
+</svg>
+`;
+
+export interface WindowActions {
+  onRefresh: () => void;
+  onOpenSettings: () => void;
+  onQuit: () => void;
+}
+
+function createTrayIcon(): Electron.NativeImage {
+  return nativeImage
+    .createFromDataURL(`data:image/svg+xml;base64,${Buffer.from(traySvg).toString("base64")}`)
+    .resize({ width: 16, height: 16 });
+}
+
+function persistBounds(window: BrowserWindow): void {
+  const bounds = window.getBounds();
+  setWindowBounds(bounds);
+}
+
+export function applyWindowPreferences(window: BrowserWindow): void {
+  const config = getConfig();
+  window.setOpacity(config.opacity);
+
+  // Three-state window mode:
+  //   desktop  — pinned to the macOS desktop layer (behind app windows), like the native Weather widget.
+  //   floating — always on top of other windows.
+  //   normal   — regular window behavior in the z-order.
+  if (process.platform === "darwin") {
+    if (config.windowMode === "desktop") {
+      window.setAlwaysOnTop(true, "desktop");
+    } else if (config.windowMode === "floating") {
+      window.setAlwaysOnTop(true, "floating");
+    } else {
+      window.setAlwaysOnTop(false);
+    }
+    window.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: false });
+  } else if (process.platform === "win32") {
+    // Electron does not expose a stable HWND-to-Progman desktop-parent API, so
+    // on Windows "desktop" degrades to a non-topmost floating window.
+    if (config.windowMode === "floating") {
+      window.setAlwaysOnTop(true);
+    } else {
+      window.setAlwaysOnTop(false);
+    }
+  } else {
+    window.setAlwaysOnTop(config.windowMode === "floating");
+  }
+}
+
+export function createMainWindow(): BrowserWindow {
+  const bounds = getWindowBounds();
+  const preloadPath = fileURLToPath(new URL("../preload/index.mjs", import.meta.url));
+  const rendererPath = fileURLToPath(new URL("../renderer/index.html", import.meta.url));
+  const window = new BrowserWindow({
+    width: bounds.width,
+    height: bounds.height,
+    x: bounds.x,
+    y: bounds.y,
+    minWidth: 380,
+    minHeight: 420,
+    frame: false,
+    transparent: true,
+    hasShadow: false,
+    resizable: true,
+    skipTaskbar: true,
+    show: false,
+    title: "PR Pulse",
+    backgroundColor: "#00000000",
+    acceptFirstMouse: true,
+    ...(process.platform === "darwin"
+      ? {
+          type: "panel" as const,
+          vibrancy: "under-window" as const,
+          visualEffectState: "active" as const,
+        }
+      : {}),
+    webPreferences: {
+      preload: preloadPath,
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: false,
+    },
+  });
+
+  window.on("move", () => persistBounds(window));
+  window.on("resize", () => persistBounds(window));
+  window.once("ready-to-show", () => {
+    applyWindowPreferences(window);
+    window.showInactive();
+  });
+  window.webContents.setWindowOpenHandler(({ url }) => {
+    void shell.openExternal(url);
+    return { action: "deny" };
+  });
+
+  const rendererUrl = process.env.ELECTRON_RENDERER_URL;
+  if (rendererUrl) {
+    void window.loadURL(rendererUrl);
+    window.webContents.openDevTools({ mode: "detach" });
+  } else {
+    void window.loadFile(rendererPath);
+  }
+
+  return window;
+}
+
+export function toggleWindowVisibility(window: BrowserWindow): void {
+  if (window.isVisible() && window.isFocused()) {
+    window.hide();
+  } else if (window.isVisible()) {
+    // Already on screen but sitting behind other apps (e.g. desktop mode).
+    // Surface it to the user so the shortcut feels responsive.
+    window.showInactive();
+    window.focus();
+  } else {
+    window.show();
+  }
+}
+
+function describeMode(mode: string): string {
+  if (mode === "desktop") return "Desktop";
+  if (mode === "floating") return "Floating";
+  return "Normal";
+}
+
+export function createTray(window: BrowserWindow, actions: WindowActions): Tray {
+  const tray = new Tray(createTrayIcon());
+  tray.setToolTip("PR Pulse");
+
+  const buildMenu = () =>
+    Menu.buildFromTemplate([
+      {
+        label: window.isVisible() ? "Hide Widget" : "Show Widget",
+        click: () => toggleWindowVisibility(window),
+      },
+      { label: "Refresh", click: actions.onRefresh },
+      { label: "Settings", click: actions.onOpenSettings },
+      {
+        label: `Window Mode: ${describeMode(getConfig().windowMode)}`,
+        click: () => actions.onOpenSettings(),
+      },
+      { type: "separator" },
+      { label: "Quit", click: actions.onQuit },
+    ]);
+
+  tray.on("click", () => {
+    toggleWindowVisibility(window);
+  });
+
+  tray.on("right-click", () => {
+    tray.popUpContextMenu(buildMenu());
+  });
+
+  if (process.platform === "darwin" && app.dock) {
+    app.dock.hide();
+  }
+
+  return tray;
+}
