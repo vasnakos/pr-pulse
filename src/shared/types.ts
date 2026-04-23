@@ -20,6 +20,9 @@ export interface PullRequestItem {
   commentCount: number;
   reviewCommentCount: number;
   lastReviewState: ReviewState;
+  approvedByMe: boolean;
+  headSha: string;
+  commitCount: number;
   labels: string[];
 }
 
@@ -27,12 +30,14 @@ export type WindowMode = "desktop" | "floating" | "normal";
 
 export interface WidgetConfig {
   githubToken: string;
+  launchAtLogin: boolean;
   pollIntervalSec: number;
   notifications: {
     assignments: boolean;
     comments: boolean;
     approvals: boolean;
     stateChanges: boolean;
+    pushes: boolean;
   };
   /**
    * How the widget window relates to other windows:
@@ -59,7 +64,10 @@ export interface WidgetState {
 export interface StateSnapshot {
   updatedAt: string;
   state: "open" | "closed" | "merged";
+  draft: boolean;
   commentCount: number;
   reviewCommentCount: number;
   lastReviewState: ReviewState;
+  headSha: string;
+  commitCount: number;
 }

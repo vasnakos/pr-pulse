@@ -128,6 +128,33 @@ export class Poller {
         return;
       }
 
+      const pushed = prev.headSha !== current.headSha;
+      if (config.notifications.pushes && pushed && item.bucket !== "mine") {
+        const commitDelta = current.commitCount - prev.commitCount;
+        const pushSummary =
+          commitDelta > 0
+            ? `+${commitDelta} commit${commitDelta === 1 ? "" : "s"} pushed.`
+            : "branch history changed (force-push or rebase).";
+        this.notify(
+          "New commits pushed",
+          `${item.repoFullName} #${item.number} ${pushSummary}`,
+          item.url,
+        );
+      }
+
+      if (
+        config.notifications.approvals &&
+        item.bucket === "reviewRequested" &&
+        prev.lastReviewState === "APPROVED" &&
+        pushed
+      ) {
+        this.notify(
+          "Approval may be stale",
+          `${item.repoFullName} #${item.number} has new commits. Re-review may be needed.`,
+          item.url,
+        );
+      }
+
       if (
         config.notifications.comments &&
         item.bucket === "mine" &&
@@ -165,6 +192,14 @@ export class Poller {
         );
       }
 
+      if (config.notifications.stateChanges && prev.draft && !current.draft) {
+        this.notify(
+          "Ready for review",
+          `${item.repoFullName} #${item.number} is no longer draft.`,
+          item.url,
+        );
+      }
+
       if (config.notifications.stateChanges && prev.state !== current.state) {
         const noun = current.state === "merged" ? "merged" : "closed";
         this.notify(
@@ -185,6 +220,10 @@ export class Poller {
   }
 
   private notify(title: string, body: string, url: string): void {
+    if (!Notification.isSupported()) {
+      return;
+    }
+
     const notification = new Notification({
       title,
       body,

@@ -73,6 +73,15 @@ export function SettingsPanel({ config, isOpen, onClose, onSave, isSaving }: Set
         />
       </label>
 
+      <label className="checkbox-row">
+        <input
+          type="checkbox"
+          checked={draft.launchAtLogin}
+          onChange={(event) => setDraft((current) => ({ ...current, launchAtLogin: event.target.checked }))}
+        />
+        <span>launch at login (start hidden)</span>
+      </label>
+
       <label className="field">
         <span>opacity {opacityLabel}</span>
         <input
@@ -178,6 +187,23 @@ export function SettingsPanel({ config, isOpen, onClose, onSave, isSaving }: Set
             }
           />
           <span>changes requested / merged / closed</span>
+        </label>
+
+        <label className="checkbox-row">
+          <input
+            type="checkbox"
+            checked={draft.notifications.pushes}
+            onChange={(event) =>
+              setDraft((current) => ({
+                ...current,
+                notifications: {
+                  ...current.notifications,
+                  pushes: event.target.checked,
+                },
+              }))
+            }
+          />
+          <span>new commits pushed to open PRs</span>
         </label>
       </div>
 

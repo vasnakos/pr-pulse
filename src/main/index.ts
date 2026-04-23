@@ -11,6 +11,7 @@ import {
 import type { WidgetConfig } from "../shared/types";
 
 const TOGGLE_SHORTCUT = "CommandOrControl+Alt+G";
+const APP_USER_MODEL_ID = "com.vasilisnakos.prpulse";
 
 const poller = new Poller();
 
@@ -28,6 +29,7 @@ function broadcast(channel: string, payload?: unknown): void {
 function normalizeConfigPatch(patch: Partial<WidgetConfig>): Partial<WidgetConfig> {
   return {
     ...patch,
+    launchAtLogin: typeof patch.launchAtLogin === "boolean" ? patch.launchAtLogin : undefined,
     pollIntervalSec:
       typeof patch.pollIntervalSec === "number"
         ? Math.max(15, Math.min(3600, Math.round(patch.pollIntervalSec)))
@@ -37,8 +39,24 @@ function normalizeConfigPatch(patch: Partial<WidgetConfig>): Partial<WidgetConfi
   };
 }
 
+function applyLaunchAtLogin(config: WidgetConfig): void {
+  app.setLoginItemSettings({
+    openAtLogin: config.launchAtLogin,
+    openAsHidden: true,
+    args: ["--hidden"],
+  });
+}
+
 async function bootstrap(): Promise<void> {
-  mainWindow = createMainWindow();
+  if (process.platform === "win32") {
+    app.setAppUserModelId(APP_USER_MODEL_ID);
+  }
+
+  const config = getConfig();
+  applyLaunchAtLogin(config);
+  const launchedHidden = app.getLoginItemSettings().wasOpenedAtLogin || process.argv.includes("--hidden");
+
+  mainWindow = createMainWindow(launchedHidden);
   tray = createTray(mainWindow, {
     onRefresh: () => {
       void poller.refresh();
@@ -64,6 +82,7 @@ async function bootstrap(): Promise<void> {
   });
   ipcMain.handle("widget:set-config", async (_event, patch: Partial<WidgetConfig>) => {
     const next = updateConfig(normalizeConfigPatch(patch));
+    applyLaunchAtLogin(next);
     if (mainWindow) {
       applyWindowPreferences(mainWindow);
     }

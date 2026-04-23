@@ -21,12 +21,14 @@ const initialState: WidgetState = {
 
 const initialConfig: WidgetConfig = {
   githubToken: "",
+  launchAtLogin: true,
   pollIntervalSec: 60,
   notifications: {
     assignments: true,
     comments: true,
     approvals: true,
     stateChanges: true,
+    pushes: true,
   },
   windowMode: "normal",
   opacity: 0.94,
@@ -37,6 +39,7 @@ export default function App() {
   const [config, setConfig] = useState<WidgetConfig>(initialConfig);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [approvedOnly, setApprovedOnly] = useState(false);
 
   useEffect(() => {
     void Promise.all([widgetApi.getState(), widgetApi.getConfig()]).then(([nextState, nextConfig]) => {
@@ -69,6 +72,18 @@ export default function App() {
     return (
       state.items.assigned.length + state.items.reviewRequested.length + state.items.mine.length
     );
+  }, [state.items]);
+
+  const approvedByMeItems = useMemo(() => {
+    const unique = new Map<number, (typeof state.items.assigned)[number]>();
+    [...state.items.reviewRequested, ...state.items.assigned, ...state.items.mine].forEach((item) => {
+      if (item.approvedByMe) {
+        unique.set(item.id, item);
+      }
+    });
+    return [...unique.values()].sort((a, b) => {
+      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+    });
   }, [state.items]);
 
   const handleSaveConfig = async (nextConfig: WidgetConfig) => {
@@ -109,8 +124,27 @@ export default function App() {
             <span>
               last poll: {state.status.lastPolledAt ? new Date(state.status.lastPolledAt).toLocaleTimeString() : "--"}
             </span>
+            <button
+              className={`chrome-button meta-button ${approvedOnly ? "accent" : ""}`}
+              type="button"
+              onClick={() => setApprovedOnly((current) => !current)}
+            >
+              {approvedOnly ? "approved-only: on" : "approved-only: off"}
+            </button>
           </div>
 
+          <PRSection
+            bucket="reviewRequested"
+            sectionKey="approved-by-me"
+            title="approved by me"
+            items={approvedByMeItems}
+            onOpen={(url) => {
+              void widgetApi.openPR(url);
+            }}
+          />
+
+          {!approvedOnly ? (
+            <>
           <PRSection
             bucket="reviewRequested"
             items={state.items.reviewRequested}
@@ -132,6 +166,8 @@ export default function App() {
               void widgetApi.openPR(url);
             }}
           />
+            </>
+          ) : null}
         </div>
       </div>
 

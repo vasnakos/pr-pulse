@@ -19,13 +19,18 @@ or sponsored by GitHub, Inc._
 - macOS vibrancy so the widget blends into the wallpaper
 - Tray entry point with refresh, settings, and quick toggle
 - Global shortcut `⌥⌘G` (`Ctrl+Alt+G` on Windows/Linux) to show/hide the widget
+- Optional launch-at-login mode (starts hidden so notifications continue in background)
 - Three PR sections:
   - Review requested from you
   - Assigned to you
   - Authored by you
+- Dedicated **approved by me** lane plus an `approved-only` filter toggle
 - Native desktop notifications for:
   - new review requests / assignments
   - new comments on your PRs
+  - new commits pushed to open PRs
+  - stale approvals after new pushes
+  - draft → ready-for-review transitions
   - approvals
   - changes requested, merged, or closed PRs
 - Persisted window position, size, opacity, notification preferences, and mode

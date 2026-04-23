@@ -6,16 +6,18 @@ interface PRSectionProps {
   bucket: PullRequestItem["bucket"];
   items: PullRequestItem[];
   onOpen: (url: string) => void;
+  title?: string;
+  sectionKey?: string;
 }
 
-export function PRSection({ bucket, items, onOpen }: PRSectionProps) {
+export function PRSection({ bucket, items, onOpen, title, sectionKey }: PRSectionProps) {
   return (
     <section className="section">
-      <div className="section-title">--- {sectionTitle(bucket)} ---</div>
+      <div className="section-title">--- {title ?? sectionTitle(bucket)} ---</div>
       {items.length ? (
         <div className="section-list">
           {items.map((item) => (
-            <PRItem key={`${bucket}-${item.id}`} item={item} onOpen={onOpen} />
+            <PRItem key={`${sectionKey ?? bucket}-${item.id}`} item={item} onOpen={onOpen} />
           ))}
         </div>
       ) : (

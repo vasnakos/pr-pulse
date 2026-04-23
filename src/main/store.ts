@@ -16,12 +16,14 @@ interface PersistedSchema {
 
 const defaultConfig: WidgetConfig = {
   githubToken: "",
+  launchAtLogin: true,
   pollIntervalSec: 60,
   notifications: {
     assignments: true,
     comments: true,
     approvals: true,
     stateChanges: true,
+    pushes: true,
   },
   windowMode: "normal",
   opacity: 0.94,

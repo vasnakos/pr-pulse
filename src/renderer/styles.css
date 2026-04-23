@@ -208,6 +208,13 @@ input {
   color: #5a6270;
   font-size: 12px;
   padding: 10px 4px 14px;
+  flex-wrap: wrap;
+}
+
+.meta-button {
+  margin-left: auto;
+  padding: 6px 9px;
+  font-size: 11px;
 }
 
 .section {
@@ -303,6 +310,12 @@ input {
 .pill.closed,
 .pill.merged {
   color: #ffb454;
+}
+
+.pill.approved-by-me {
+  color: #0b0f0c;
+  border-color: rgba(0, 255, 156, 0.7);
+  background: rgba(0, 255, 156, 0.9);
 }
 
 .empty-line {

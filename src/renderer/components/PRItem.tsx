@@ -16,6 +16,7 @@ export function PRItem({ item, onOpen }: PRItemProps) {
         <span className="pr-number">#{item.number}</span>
         <span className="pr-repo">{item.repoFullName}</span>
         {item.draft ? <span className="pill">draft</span> : null}
+        {item.approvedByMe ? <span className="pill approved-by-me">approved by me</span> : null}
       </div>
       <div className="pr-title">"{item.title}"</div>
       <div className="pr-meta">

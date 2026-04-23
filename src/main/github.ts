@@ -30,7 +30,7 @@ const requestCache = new Map<string, CacheEntry<unknown>>();
 function createOctokit(token: string): Octokit {
   return new Octokit({
     auth: token,
-    userAgent: "github-pr-desktop-widget",
+    userAgent: "pr-pulse",
   });
 }
 
@@ -112,15 +112,19 @@ async function fetchDetails(
   owner: string,
   repo: string,
   pullNumber: number,
+  viewerLogin: string,
 ): Promise<{
   additions: number;
   deletions: number;
   draft: boolean;
   state: "open" | "closed";
   mergedAt: string | null;
+  headSha: string;
+  commitCount: number;
   issueCommentCount: number;
   reviewCommentCount: number;
   lastReviewState: ReviewState;
+  approvedByMe: boolean;
 }> {
   const [pull, issueComments, reviewComments, reviews] = await Promise.all([
     cachedRequest<{
@@ -129,6 +133,8 @@ async function fetchDetails(
       draft: boolean;
       state: "open" | "closed";
       merged_at: string | null;
+      head: { sha: string };
+      commits: number;
     }>(
       octokit,
       `pull:${owner}/${repo}#${pullNumber}`,
@@ -161,7 +167,7 @@ async function fetchDetails(
         per_page: 100,
       },
     ),
-    cachedRequest<Array<{ id: number; state?: string; submitted_at?: string }>>(
+    cachedRequest<Array<{ id: number; state?: string; submitted_at?: string; user?: { login?: string } }>>(
       octokit,
       `reviews:${owner}/${repo}#${pullNumber}`,
       "GET /repos/{owner}/{repo}/pulls/{pull_number}/reviews",
@@ -180,6 +186,7 @@ async function fetchDetails(
       return new Date(a.submitted_at ?? 0).getTime() - new Date(b.submitted_at ?? 0).getTime();
     });
   const latestReview = submittedReviews.at(-1);
+  const latestMyReview = submittedReviews.filter((review) => review.user?.login === viewerLogin).at(-1);
 
   return {
     additions: pull.additions,
@@ -187,9 +194,12 @@ async function fetchDetails(
     draft: pull.draft,
     state: pull.state,
     mergedAt: pull.merged_at,
+    headSha: pull.head.sha,
+    commitCount: pull.commits,
     issueCommentCount: issueComments.length,
     reviewCommentCount: reviewComments.length,
     lastReviewState: normalizeReviewState(latestReview?.state),
+    approvedByMe: normalizeReviewState(latestMyReview?.state) === "APPROVED",
   };
 }
 
@@ -243,6 +253,7 @@ export async function fetchWidgetState(token: string): Promise<{
   snapshot: Map<number, StateSnapshot>;
 }> {
   const octokit = createOctokit(token);
+  const viewer = await cachedRequest<{ login: string }>(octokit, "viewer", "GET /user", {});
 
   const [assigned, reviewRequested, mine] = await Promise.all([
     fetchSearchItems(octokit, "assigned", "is:open is:pr assignee:@me"),
@@ -259,7 +270,7 @@ export async function fetchWidgetState(token: string): Promise<{
   await Promise.all(
     [...uniqueById.values()].map(async (item) => {
       const { owner, repo } = parseRepo(item.repository_url);
-      const details = await fetchDetails(octokit, owner, repo, item.number);
+      const details = await fetchDetails(octokit, owner, repo, item.number, viewer.login);
 
       detailedItems.set(item.id, {
         id: item.id,
@@ -279,6 +290,9 @@ export async function fetchWidgetState(token: string): Promise<{
         commentCount: details.issueCommentCount,
         reviewCommentCount: details.reviewCommentCount,
         lastReviewState: details.lastReviewState,
+        approvedByMe: details.approvedByMe,
+        headSha: details.headSha,
+        commitCount: details.commitCount,
         labels: (item.labels ?? []).map((label) => label.name).filter(Boolean) as string[],
       });
     }),
@@ -312,9 +326,12 @@ export async function fetchWidgetState(token: string): Promise<{
     snapshot.set(id, {
       updatedAt: item.updatedAt,
       state: item.state,
+      draft: item.draft,
       commentCount: item.commentCount,
       reviewCommentCount: item.reviewCommentCount,
       lastReviewState: item.lastReviewState,
+      headSha: item.headSha,
+      commitCount: item.commitCount,
     });
   });
 

@@ -64,7 +64,7 @@ export function applyWindowPreferences(window: BrowserWindow): void {
   }
 }
 
-export function createMainWindow(): BrowserWindow {
+export function createMainWindow(startHidden = false): BrowserWindow {
   const bounds = getWindowBounds();
   const preloadPath = fileURLToPath(new URL("../preload/index.mjs", import.meta.url));
   const rendererPath = fileURLToPath(new URL("../renderer/index.html", import.meta.url));
@@ -103,7 +103,9 @@ export function createMainWindow(): BrowserWindow {
   window.on("resize", () => persistBounds(window));
   window.once("ready-to-show", () => {
     applyWindowPreferences(window);
-    window.showInactive();
+    if (!startHidden) {
+      window.showInactive();
+    }
   });
   window.webContents.setWindowOpenHandler(({ url }) => {
     void shell.openExternal(url);
