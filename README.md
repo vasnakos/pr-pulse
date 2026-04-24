@@ -64,6 +64,7 @@ npm run dist:mac         # build a .dmg into dist/
 npm run dist:win         # build an NSIS .exe into dist/
 ```
 
+
 ## GitHub token scopes
 
 Create a classic or fine-grained personal access token that can read pull
