@@ -9,7 +9,8 @@
     "build": "electron-vite build",
     "dist": "npm run build && electron-builder",
     "dist:mac": "npm run build && electron-builder --mac dmg",
-    "dist:win": "npm run build && electron-builder --win nsis"
+    "dist:win": "npm run build && electron-builder --win nsis",
+    "dist:linux": "npm run build && electron-builder --linux AppImage deb"
   },
   "keywords": [
     "electron",
@@ -18,7 +19,10 @@
     "widget",
     "pr-pulse"
   ],
-  "author": "Vasilis Nakos",
+  "author": {
+    "name": "Vasilis Nakos",
+    "email": "vasilisnakos@users.noreply.github.com"
+  },
   "license": "MIT",
   "repository": {
     "type": "git",

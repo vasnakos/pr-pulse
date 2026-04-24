@@ -1,0 +1,20 @@
+services:
+  linux:
+    build:
+      context: .
+      dockerfile: Dockerfile.build
+    command: npx electron-builder --linux AppImage deb --publish never
+    volumes:
+      - ./builds:/app/builds
+    environment:
+      - USE_HARD_LINKS=false
+
+  windows:
+    build:
+      context: .
+      dockerfile: Dockerfile.build
+    command: npx electron-builder --win nsis --publish never
+    volumes:
+      - ./builds:/app/builds
+    environment:
+      - USE_HARD_LINKS=false

@@ -1,0 +1,31 @@
+# Dependencies (reinstalled inside container)
+node_modules
+
+# Build artifacts
+out
+builds
+dist
+
+# Docker files (not needed inside the image)
+Dockerfile.build
+docker-compose.yml
+.dockerignore
+
+# Version control
+.git
+.gitignore
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Env & logs
+.env
+.env.*
+*.log
+
+# Docs (not needed for building)
+README.md
+LICENSE

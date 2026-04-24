@@ -2,7 +2,7 @@
 
 > The heartbeat of your GitHub pull requests, on your desktop.
 
-**PR Pulse** is a developer-focused Electron widget for macOS and Windows that keeps your
+**PR Pulse** is a developer-focused Electron widget for macOS, Windows, and Linux that keeps your
 GitHub pull request activity quietly visible while you work. Terminal-inspired, ambient,
 and keyboard-friendly.
 
@@ -60,8 +60,34 @@ git clone https://github.com/vasilisnakos/pr-pulse.git
 cd pr-pulse
 npm install
 npm run dev              # develop with hot reload
-npm run dist:mac         # build a .dmg into dist/
-npm run dist:win         # build an NSIS .exe into dist/
+```
+
+#### Native builds (requires running on the target OS)
+
+Output is placed in the `builds/` directory.
+
+| Command | Output | Requires |
+| --- | --- | --- |
+| `npm run dist:mac` | `.dmg` (macOS installer) | macOS |
+| `npm run dist:win` | `.exe` (NSIS installer) | Windows |
+| `npm run dist:linux` | `.AppImage` + `.deb` | Linux |
+
+#### Docker builds (Linux and Windows only)
+
+Requires [Docker](https://docs.docker.com/get-docker/) with the Compose plugin.
+Artifacts are written to `./builds` on the host.
+
+> macOS `.dmg` builds cannot be produced inside Docker due to Apple licensing restrictions.
+
+```bash
+# Linux — AppImage + .deb
+docker compose run --rm linux
+
+# Windows — NSIS .exe (cross-compiled via Wine)
+docker compose run --rm windows
+
+# Both
+docker compose run --rm linux && docker compose run --rm windows
 ```
 
 ## GitHub token scopes
