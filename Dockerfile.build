@@ -1,0 +1,11 @@
+FROM electronuserland/builder:wine
+
+WORKDIR /app
+
+# Install dependencies (cached layer)
+COPY package.json package-lock.json ./
+RUN npm ci
+
+# Copy source and compile with electron-vite
+COPY . .
+RUN npm run build

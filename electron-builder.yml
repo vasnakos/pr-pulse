@@ -2,6 +2,7 @@ appId: com.vasilisnakos.prpulse
 productName: PR Pulse
 directories:
   buildResources: build
+  output: builds
 files:
   - out/**/*
   - package.json
@@ -11,6 +12,10 @@ mac:
 win:
   target:
     - nsis
+linux:
+  target:
+    - AppImage
+    - deb
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
