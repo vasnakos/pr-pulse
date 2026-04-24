@@ -302,6 +302,7 @@ export async function fetchWidgetState(token: string): Promise<{
     assigned: [],
     reviewRequested: [],
     mine: [],
+    muted: [],
   };
 
   const populateBucket = (items: SearchIssueItem[], bucket: PullRequestItem["bucket"]) => {

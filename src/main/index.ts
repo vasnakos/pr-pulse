@@ -1,7 +1,7 @@
 import { app, globalShortcut, ipcMain, shell } from "electron";
 
 import { Poller } from "./poller";
-import { getConfig, updateConfig } from "./store";
+import { getConfig, getMutedPrIds, toggleMutedPr, updateConfig } from "./store";
 import {
   applyWindowPreferences,
   createMainWindow,
@@ -77,6 +77,7 @@ async function bootstrap(): Promise<void> {
 
   ipcMain.handle("widget:get-state", () => poller.getState());
   ipcMain.handle("widget:get-config", () => getConfig());
+  ipcMain.handle("widget:get-muted", () => getMutedPrIds());
   ipcMain.handle("widget:refresh", async () => {
     return poller.refresh();
   });
@@ -92,6 +93,12 @@ async function bootstrap(): Promise<void> {
   });
   ipcMain.handle("widget:open-pr", async (_event, url: string) => {
     await shell.openExternal(url);
+  });
+  ipcMain.handle("widget:set-muted", async (_event, payload: { id: number; muted: boolean }) => {
+    const mutedIds = toggleMutedPr(payload.id, payload.muted);
+    broadcast("widget:muted", mutedIds);
+    await poller.refresh();
+    return mutedIds;
   });
   ipcMain.handle("widget:open-settings", () => {
     mainWindow?.show();

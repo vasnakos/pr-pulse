@@ -48,6 +48,8 @@ export function sectionTitle(bucket: PullRequestItem["bucket"]): string {
       return "review requested";
     case "mine":
       return "my prs";
+    case "muted":
+      return "muted";
     default:
       return "prs";
   }

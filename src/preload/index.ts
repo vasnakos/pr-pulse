@@ -5,9 +5,12 @@ import type { WidgetConfig, WidgetState } from "../shared/types";
 const api = {
   getState: (): Promise<WidgetState> => ipcRenderer.invoke("widget:get-state"),
   getConfig: (): Promise<WidgetConfig> => ipcRenderer.invoke("widget:get-config"),
+  getMuted: (): Promise<number[]> => ipcRenderer.invoke("widget:get-muted"),
   refresh: (): Promise<WidgetState> => ipcRenderer.invoke("widget:refresh"),
   setConfig: (patch: Partial<WidgetConfig>): Promise<WidgetConfig> =>
     ipcRenderer.invoke("widget:set-config", patch),
+  setMuted: (payload: { id: number; muted: boolean }): Promise<number[]> =>
+    ipcRenderer.invoke("widget:set-muted", payload),
   openPR: (url: string): Promise<void> => ipcRenderer.invoke("widget:open-pr", url),
   openSettings: (): Promise<void> => ipcRenderer.invoke("widget:open-settings"),
   hide: (): Promise<void> => ipcRenderer.invoke("widget:hide"),
@@ -20,6 +23,11 @@ const api = {
     const wrapped = (_event: Electron.IpcRendererEvent, config: WidgetConfig) => listener(config);
     ipcRenderer.on("widget:config", wrapped);
     return () => ipcRenderer.removeListener("widget:config", wrapped);
+  },
+  onMutedChange: (listener: (mutedIds: number[]) => void): (() => void) => {
+    const wrapped = (_event: Electron.IpcRendererEvent, mutedIds: number[]) => listener(mutedIds);
+    ipcRenderer.on("widget:muted", wrapped);
+    return () => ipcRenderer.removeListener("widget:muted", wrapped);
   },
   onOpenSettings: (listener: () => void): (() => void) => {
     const wrapped = () => listener();

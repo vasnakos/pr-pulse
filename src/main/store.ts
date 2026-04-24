@@ -12,6 +12,7 @@ export interface WindowBounds {
 interface PersistedSchema {
   config: WidgetConfig;
   windowBounds: WindowBounds;
+  mutedPrIds: number[];
 }
 
 const defaultConfig: WidgetConfig = {
@@ -38,6 +39,7 @@ const store = new Store<PersistedSchema>({
   defaults: {
     config: defaultConfig,
     windowBounds: defaultBounds,
+    mutedPrIds: [],
   },
 });
 
@@ -96,4 +98,27 @@ export function getWindowBounds(): WindowBounds {
 
 export function setWindowBounds(bounds: WindowBounds): void {
   store.set("windowBounds", bounds);
+}
+
+export function getMutedPrIds(): number[] {
+  return [...new Set(store.get("mutedPrIds", []))];
+}
+
+export function setMutedPrIds(ids: number[]): number[] {
+  const uniqueIds = [...new Set(ids)];
+  store.set("mutedPrIds", uniqueIds);
+  return uniqueIds;
+}
+
+export function toggleMutedPr(id: number, muted?: boolean): number[] {
+  const next = new Set(getMutedPrIds());
+  const shouldMute = muted ?? !next.has(id);
+
+  if (shouldMute) {
+    next.add(id);
+  } else {
+    next.delete(id);
+  }
+
+  return setMutedPrIds([...next]);
 }

@@ -1,4 +1,4 @@
-export type PRBucket = "assigned" | "reviewRequested" | "mine";
+export type PRBucket = "assigned" | "reviewRequested" | "mine" | "muted";
 
 export type ReviewState = "APPROVED" | "CHANGES_REQUESTED" | "COMMENTED" | "PENDING" | "NONE";
 

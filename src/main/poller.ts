@@ -1,7 +1,7 @@
 import { Notification, shell } from "electron";
 
 import { fetchWidgetState, normalizeError } from "./github";
-import { getConfig } from "./store";
+import { getConfig, getMutedPrIds } from "./store";
 import type { PullRequestItem, StateSnapshot, WidgetState } from "../shared/types";
 
 type StateListener = (state: WidgetState) => void;
@@ -16,6 +16,7 @@ const emptyState: WidgetState = {
     assigned: [],
     reviewRequested: [],
     mine: [],
+    muted: [],
   },
 };
 
@@ -79,7 +80,7 @@ export class Poller {
 
       this.snapshot = result.snapshot;
       this.initialized = true;
-      this.updateState(result.state);
+      this.updateState(this.partitionMutedState(result.state));
       return this.state;
     } catch (error) {
       const normalized = normalizeError(error);
@@ -101,6 +102,41 @@ export class Poller {
     for (const listener of this.listeners) {
       listener(this.state);
     }
+  }
+
+  private partitionMutedState(state: WidgetState): WidgetState {
+    const mutedIds = new Set(getMutedPrIds());
+    const mutedById = new Map<number, PullRequestItem>();
+
+    const keepVisible = (items: PullRequestItem[]) => {
+      const visible: PullRequestItem[] = [];
+
+      items.forEach((item) => {
+        if (mutedIds.has(item.id)) {
+          mutedById.set(item.id, {
+            ...item,
+            bucket: "muted",
+          });
+          return;
+        }
+
+        visible.push(item);
+      });
+
+      return visible;
+    };
+
+    return {
+      ...state,
+      items: {
+        assigned: keepVisible(state.items.assigned),
+        reviewRequested: keepVisible(state.items.reviewRequested),
+        mine: keepVisible(state.items.mine),
+        muted: [...mutedById.values()].sort((a, b) => {
+          return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+        }),
+      },
+    };
   }
 
   private emitNotifications(

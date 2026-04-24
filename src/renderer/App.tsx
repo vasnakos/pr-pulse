@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type MouseEvent } from "react";
 
+import { ContextMenu } from "./components/ContextMenu";
 import { Header } from "./components/Header";
 import { PRSection } from "./components/PRSection";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { widgetApi } from "./lib/api";
-import type { WidgetConfig, WidgetState } from "../shared/types";
+import type { PullRequestItem, WidgetConfig, WidgetState } from "../shared/types";
 
 const initialState: WidgetState = {
   status: {
@@ -16,6 +17,7 @@ const initialState: WidgetState = {
     assigned: [],
     reviewRequested: [],
     mine: [],
+    muted: [],
   },
 };
 
@@ -40,15 +42,24 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [approvedOnly, setApprovedOnly] = useState(false);
+  const [mutedIds, setMutedIds] = useState<Set<number>>(new Set());
+  const [contextMenu, setContextMenu] = useState<{
+    item: PullRequestItem;
+    x: number;
+    y: number;
+  } | null>(null);
 
   useEffect(() => {
-    void Promise.all([widgetApi.getState(), widgetApi.getConfig()]).then(([nextState, nextConfig]) => {
-      setState(nextState);
-      setConfig(nextConfig);
-      if (!nextConfig.githubToken.trim()) {
-        setSettingsOpen(true);
-      }
-    });
+    void Promise.all([widgetApi.getState(), widgetApi.getConfig(), widgetApi.getMuted()]).then(
+      ([nextState, nextConfig, nextMutedIds]) => {
+        setState(nextState);
+        setConfig(nextConfig);
+        setMutedIds(new Set(nextMutedIds));
+        if (!nextConfig.githubToken.trim()) {
+          setSettingsOpen(true);
+        }
+      },
+    );
 
     const unsubscribeState = widgetApi.onStateChange((nextState) => {
       setState(nextState);
@@ -59,24 +70,36 @@ export default function App() {
     const unsubscribeConfig = widgetApi.onConfigChange((nextConfig) => {
       setConfig(nextConfig);
     });
+    const unsubscribeMuted = widgetApi.onMutedChange((nextMutedIds) => {
+      setMutedIds(new Set(nextMutedIds));
+    });
     const unsubscribeOpenSettings = widgetApi.onOpenSettings(() => setSettingsOpen(true));
 
     return () => {
       unsubscribeState();
       unsubscribeConfig();
+      unsubscribeMuted();
       unsubscribeOpenSettings();
     };
   }, []);
 
   const totalCount = useMemo(() => {
     return (
-      state.items.assigned.length + state.items.reviewRequested.length + state.items.mine.length
+      state.items.assigned.length +
+      state.items.reviewRequested.length +
+      state.items.mine.length +
+      state.items.muted.length
     );
   }, [state.items]);
 
   const approvedByMeItems = useMemo(() => {
     const unique = new Map<number, (typeof state.items.assigned)[number]>();
-    [...state.items.reviewRequested, ...state.items.assigned, ...state.items.mine].forEach((item) => {
+    [
+      ...state.items.reviewRequested,
+      ...state.items.assigned,
+      ...state.items.mine,
+      ...state.items.muted,
+    ].forEach((item) => {
       if (item.approvedByMe) {
         unique.set(item.id, item);
       }
@@ -95,6 +118,21 @@ export default function App() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleContextMenu = (item: PullRequestItem, event: MouseEvent<HTMLButtonElement>) => {
+    setContextMenu({
+      item,
+      x: event.clientX,
+      y: event.clientY,
+    });
+  };
+
+  const handleToggleMute = async (item: PullRequestItem) => {
+    await widgetApi.setMuted({
+      id: item.id,
+      muted: !mutedIds.has(item.id),
+    });
   };
 
   return (
@@ -138,6 +176,7 @@ export default function App() {
             sectionKey="approved-by-me"
             title="approved by me"
             items={approvedByMeItems}
+            onContextMenu={handleContextMenu}
             onOpen={(url) => {
               void widgetApi.openPR(url);
             }}
@@ -145,29 +184,43 @@ export default function App() {
 
           {!approvedOnly ? (
             <>
-          <PRSection
-            bucket="reviewRequested"
-            items={state.items.reviewRequested}
-            onOpen={(url) => {
-              void widgetApi.openPR(url);
-            }}
-          />
-          <PRSection
-            bucket="assigned"
-            items={state.items.assigned}
-            onOpen={(url) => {
-              void widgetApi.openPR(url);
-            }}
-          />
-          <PRSection
-            bucket="mine"
-            items={state.items.mine}
-            onOpen={(url) => {
-              void widgetApi.openPR(url);
-            }}
-          />
+              <PRSection
+                bucket="reviewRequested"
+                items={state.items.reviewRequested}
+                onContextMenu={handleContextMenu}
+                onOpen={(url) => {
+                  void widgetApi.openPR(url);
+                }}
+              />
+              <PRSection
+                bucket="assigned"
+                items={state.items.assigned}
+                onContextMenu={handleContextMenu}
+                onOpen={(url) => {
+                  void widgetApi.openPR(url);
+                }}
+              />
+              <PRSection
+                bucket="mine"
+                items={state.items.mine}
+                onContextMenu={handleContextMenu}
+                onOpen={(url) => {
+                  void widgetApi.openPR(url);
+                }}
+              />
             </>
           ) : null}
+
+          <PRSection
+            bucket="muted"
+            collapsible
+            defaultExpanded={false}
+            items={state.items.muted}
+            onContextMenu={handleContextMenu}
+            onOpen={(url) => {
+              void widgetApi.openPR(url);
+            }}
+          />
         </div>
       </div>
 
@@ -178,6 +231,18 @@ export default function App() {
         onSave={handleSaveConfig}
         isSaving={saving}
       />
+
+      {contextMenu ? (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          label={mutedIds.has(contextMenu.item.id) ? "unmute PR" : "mute PR"}
+          onClose={() => setContextMenu(null)}
+          onSelect={() => {
+            void handleToggleMute(contextMenu.item);
+          }}
+        />
+      ) : null}
     </div>
   );
 }
