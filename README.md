@@ -72,6 +72,26 @@ Output is placed in the `builds/` directory.
 | `npm run dist:win` | `.exe` (NSIS installer) | Windows |
 | `npm run dist:linux` | `.AppImage` + `.deb` | Linux |
 
+#### GitHub Actions (automated releases)
+
+Pushing a version tag triggers the CI workflow which builds all three platforms in parallel and attaches the artifacts to a GitHub Release automatically.
+
+```bash
+git tag v0.1.0 && git push origin v0.1.0
+```
+
+The workflow (`.github/workflows/release.yml`) runs three jobs in parallel:
+
+| Job | Runner | Output |
+| --- | --- | --- |
+| `build-mac` | `macos-latest` | `.dmg` |
+| `build-win` | `windows-latest` | `.exe` |
+| `build-linux` | `ubuntu-latest` | `.AppImage` + `.deb` |
+
+Once all three complete, a `release` job creates a GitHub Release at the pushed tag with all artifacts attached and auto-generated release notes.
+
+You can also trigger a build without creating a release via **Actions → Build & Release → Run workflow** on GitHub.
+
 #### Docker builds (Linux and Windows only)
 
 Requires [Docker](https://docs.docker.com/get-docker/) with the Compose plugin.
