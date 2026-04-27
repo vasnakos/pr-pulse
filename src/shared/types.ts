@@ -32,6 +32,7 @@ export interface WidgetConfig {
   githubToken: string;
   launchAtLogin: boolean;
   pollIntervalSec: number;
+  compactMode: boolean;
   notifications: {
     assignments: boolean;
     comments: boolean;

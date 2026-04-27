@@ -13,6 +13,7 @@ const api = {
     ipcRenderer.invoke("widget:set-muted", payload),
   openPR: (url: string): Promise<void> => ipcRenderer.invoke("widget:open-pr", url),
   openSettings: (): Promise<void> => ipcRenderer.invoke("widget:open-settings"),
+  setContentHeight: (height: number): Promise<void> => ipcRenderer.invoke("widget:set-content-height", height),
   hide: (): Promise<void> => ipcRenderer.invoke("widget:hide"),
   onStateChange: (listener: (state: WidgetState) => void): (() => void) => {
     const wrapped = (_event: Electron.IpcRendererEvent, state: WidgetState) => listener(state);

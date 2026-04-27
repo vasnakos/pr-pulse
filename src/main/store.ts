@@ -19,6 +19,7 @@ const defaultConfig: WidgetConfig = {
   githubToken: "",
   launchAtLogin: true,
   pollIntervalSec: 60,
+  compactMode: false,
   notifications: {
     assignments: true,
     comments: true,
