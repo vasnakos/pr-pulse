@@ -4,6 +4,8 @@ import { Poller } from "./poller";
 import { getConfig, getMutedPrIds, toggleMutedPr, updateConfig } from "./store";
 import {
   applyWindowPreferences,
+  resizeWindowHeight,
+  restoreExpandedBounds,
   createMainWindow,
   createTray,
   toggleWindowVisibility,
@@ -17,6 +19,7 @@ const poller = new Poller();
 
 let mainWindow: Electron.BrowserWindow | null = null;
 let tray: Electron.Tray | null = null;
+let expandedBoundsBeforeCompact: Electron.Rectangle | null = null;
 
 function broadcast(channel: string, payload?: unknown): void {
   if (!mainWindow || mainWindow.isDestroyed()) {
@@ -82,10 +85,21 @@ async function bootstrap(): Promise<void> {
     return poller.refresh();
   });
   ipcMain.handle("widget:set-config", async (_event, patch: Partial<WidgetConfig>) => {
+    const previous = getConfig();
+    if (mainWindow && !previous.compactMode && patch.compactMode === true) {
+      expandedBoundsBeforeCompact = mainWindow.getBounds();
+    }
+
     const next = updateConfig(normalizeConfigPatch(patch));
     applyLaunchAtLogin(next);
     if (mainWindow) {
       applyWindowPreferences(mainWindow);
+      if (!next.compactMode && previous.compactMode) {
+        if (expandedBoundsBeforeCompact) {
+          restoreExpandedBounds(mainWindow, expandedBoundsBeforeCompact);
+        }
+        expandedBoundsBeforeCompact = null;
+      }
     }
     broadcast("widget:config", next);
     poller.start();
@@ -111,6 +125,13 @@ async function bootstrap(): Promise<void> {
     if (mainWindow) {
       toggleWindowVisibility(mainWindow);
     }
+  });
+  ipcMain.handle("widget:set-content-height", async (_event, nextHeight: number) => {
+    if (!mainWindow || !getConfig().compactMode) {
+      return;
+    }
+
+    resizeWindowHeight(mainWindow, nextHeight);
   });
 
   globalShortcut.register(TOGGLE_SHORTCUT, () => {

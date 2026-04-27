@@ -94,6 +94,15 @@ export function SettingsPanel({ config, isOpen, onClose, onSave, isSaving }: Set
         />
       </label>
 
+      <label className="checkbox-row">
+        <input
+          type="checkbox"
+          checked={draft.compactMode}
+          onChange={(event) => setDraft((current) => ({ ...current, compactMode: event.target.checked }))}
+        />
+        <span>compact mode (minimal layout)</span>
+      </label>
+
       <div className="field-group">
         <span className="group-title">window mode</span>
         <div className="mode-selector" role="radiogroup" aria-label="window mode">

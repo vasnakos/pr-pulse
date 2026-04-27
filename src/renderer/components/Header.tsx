@@ -7,9 +7,46 @@ interface HeaderProps {
   onRefresh: () => void;
   onOpenSettings: () => void;
   onHide: () => void;
+  onExitCompact?: () => void;
+  compact?: boolean;
 }
 
-export function Header({ status, isRefreshing, onRefresh, onOpenSettings, onHide }: HeaderProps) {
+export function Header({
+  status,
+  isRefreshing,
+  onRefresh,
+  onOpenSettings,
+  onHide,
+  onExitCompact,
+  compact = false,
+}: HeaderProps) {
+  if (compact) {
+    return (
+      <header className="header drag-region is-compact">
+        <div className="header-actions no-drag">
+          <button
+            className="chrome-button chrome-button-icon"
+            onClick={onExitCompact}
+            type="button"
+            aria-label="Expand widget"
+            title="Expand widget"
+          >
+            ⤢
+          </button>
+          <button
+            className="chrome-button chrome-button-icon"
+            onClick={onHide}
+            type="button"
+            aria-label="Hide widget"
+            title="Hide (toggle with ⌥⌘G)"
+          >
+            :q
+          </button>
+        </div>
+      </header>
+    );
+  }
+
   return (
     <header className="header drag-region">
       <div className="title-block">

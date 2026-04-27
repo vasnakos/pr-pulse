@@ -25,6 +25,7 @@ const initialConfig: WidgetConfig = {
   githubToken: "",
   launchAtLogin: true,
   pollIntervalSec: 60,
+  compactMode: false,
   notifications: {
     assignments: true,
     comments: true,
@@ -83,6 +84,70 @@ export default function App() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!config.compactMode) {
+      return;
+    }
+
+    let frame = 0;
+
+    const syncCompactHeight = () => {
+      frame = 0;
+      const appShell = document.querySelector(".app-shell") as HTMLElement | null;
+      const compactPanel = document.querySelector(".panel.is-compact") as HTMLElement | null;
+      const settingsPanel = document.querySelector(".settings-panel.is-open") as HTMLElement | null;
+
+      if (!appShell || !compactPanel) {
+        return;
+      }
+
+      const shellHeight = Math.ceil(appShell.getBoundingClientRect().height);
+      const panelHeight = Math.ceil(compactPanel.getBoundingClientRect().height + 24);
+      const settingsHeight = settingsPanel
+        ? Math.ceil(settingsPanel.getBoundingClientRect().height + 24)
+        : 0;
+      const targetHeight = Math.max(shellHeight, panelHeight, settingsHeight);
+
+      void widgetApi.setContentHeight(targetHeight);
+    };
+
+    const scheduleSync = () => {
+      if (frame) {
+        cancelAnimationFrame(frame);
+      }
+      frame = requestAnimationFrame(syncCompactHeight);
+    };
+
+    const observer = new ResizeObserver(() => {
+      scheduleSync();
+    });
+
+    const appShell = document.querySelector(".app-shell");
+    const compactPanel = document.querySelector(".panel.is-compact");
+    const settingsPanel = document.querySelector(".settings-panel");
+
+    if (appShell) {
+      observer.observe(appShell);
+    }
+    if (compactPanel) {
+      observer.observe(compactPanel);
+    }
+    if (settingsPanel) {
+      observer.observe(settingsPanel);
+    }
+
+    scheduleSync();
+    window.addEventListener("resize", scheduleSync);
+
+    return () => {
+      if (frame) {
+        cancelAnimationFrame(frame);
+      }
+      observer.disconnect();
+      window.removeEventListener("resize", scheduleSync);
+    };
+  }, [config.compactMode, settingsOpen, state]);
+
   const totalCount = useMemo(() => {
     return (
       state.items.assigned.length +
@@ -135,12 +200,19 @@ export default function App() {
     });
   };
 
+  const handleExitCompactMode = async () => {
+    const saved = await widgetApi.setConfig({ compactMode: false });
+    setConfig(saved);
+  };
+
   return (
-    <div className="app-shell">
-      <div className="panel">
+    <div className={`app-shell ${config.compactMode ? "is-compact" : ""}`}>
+      <div className={`panel ${config.compactMode ? "is-compact" : ""}`}>
         <Header
           status={state.status}
           isRefreshing={state.status.state === "loading"}
+          compact={config.compactMode}
+          onExitCompact={handleExitCompactMode}
           onRefresh={() => {
             void widgetApi.refresh();
           }}
@@ -157,32 +229,36 @@ export default function App() {
         ) : null}
 
         <div className="body">
-          <div className="meta-bar">
-            <span>tracked items: {totalCount}</span>
-            <span>
-              last poll: {state.status.lastPolledAt ? new Date(state.status.lastPolledAt).toLocaleTimeString() : "--"}
-            </span>
-            <button
-              className={`chrome-button meta-button ${approvedOnly ? "accent" : ""}`}
-              type="button"
-              onClick={() => setApprovedOnly((current) => !current)}
-            >
-              {approvedOnly ? "approved-only: on" : "approved-only: off"}
-            </button>
-          </div>
+          {!config.compactMode ? (
+            <>
+              <div className="meta-bar">
+                <span>tracked items: {totalCount}</span>
+                <span>
+                  last poll: {state.status.lastPolledAt ? new Date(state.status.lastPolledAt).toLocaleTimeString() : "--"}
+                </span>
+                <button
+                  className={`chrome-button meta-button ${approvedOnly ? "accent" : ""}`}
+                  type="button"
+                  onClick={() => setApprovedOnly((current) => !current)}
+                >
+                  {approvedOnly ? "approved-only: on" : "approved-only: off"}
+                </button>
+              </div>
 
-          <PRSection
-            bucket="reviewRequested"
-            sectionKey="approved-by-me"
-            title="approved by me"
-            items={approvedByMeItems}
-            onContextMenu={handleContextMenu}
-            onOpen={(url) => {
-              void widgetApi.openPR(url);
-            }}
-          />
+              <PRSection
+                bucket="reviewRequested"
+                sectionKey="approved-by-me"
+                title="approved by me"
+                items={approvedByMeItems}
+                onContextMenu={handleContextMenu}
+                onOpen={(url) => {
+                  void widgetApi.openPR(url);
+                }}
+              />
+            </>
+          ) : null}
 
-          {!approvedOnly ? (
+          {!approvedOnly || config.compactMode ? (
             <>
               <PRSection
                 bucket="reviewRequested"
@@ -211,16 +287,18 @@ export default function App() {
             </>
           ) : null}
 
-          <PRSection
-            bucket="muted"
-            collapsible
-            defaultExpanded={false}
-            items={state.items.muted}
-            onContextMenu={handleContextMenu}
-            onOpen={(url) => {
-              void widgetApi.openPR(url);
-            }}
-          />
+          {!config.compactMode ? (
+            <PRSection
+              bucket="muted"
+              collapsible
+              defaultExpanded={false}
+              items={state.items.muted}
+              onContextMenu={handleContextMenu}
+              onOpen={(url) => {
+                void widgetApi.openPR(url);
+              }}
+            />
+          ) : null}
         </div>
       </div>
 

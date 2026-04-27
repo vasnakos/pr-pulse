@@ -9,6 +9,7 @@ export const widgetApi = {
   setMuted: (payload: { id: number; muted: boolean }): Promise<number[]> => window.widgetApi.setMuted(payload),
   openPR: (url: string): Promise<void> => window.widgetApi.openPR(url),
   openSettings: (): Promise<void> => window.widgetApi.openSettings(),
+  setContentHeight: (height: number): Promise<void> => window.widgetApi.setContentHeight(height),
   hide: (): Promise<void> => window.widgetApi.hide(),
   onStateChange: (listener: (state: WidgetState) => void): (() => void) =>
     window.widgetApi.onStateChange(listener),

@@ -1,14 +1,20 @@
 import {
   BrowserWindow,
   Menu,
+  Rectangle,
   Tray,
   app,
   nativeImage,
+  screen,
   shell,
 } from "electron";
 import { fileURLToPath } from "node:url";
 
 import { getConfig, getWindowBounds, setWindowBounds } from "./store";
+
+const MIN_WINDOW_WIDTH = 380;
+const NORMAL_MIN_HEIGHT = 420;
+const COMPACT_MIN_HEIGHT = 120;
 
 const traySvg = `
 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
@@ -34,9 +40,55 @@ function persistBounds(window: BrowserWindow): void {
   setWindowBounds(bounds);
 }
 
+export function getMinimumWindowHeight(compactMode: boolean): number {
+  return compactMode ? COMPACT_MIN_HEIGHT : NORMAL_MIN_HEIGHT;
+}
+
+export function applyMinimumWindowSize(window: BrowserWindow, compactMode: boolean): void {
+  window.setMinimumSize(MIN_WINDOW_WIDTH, getMinimumWindowHeight(compactMode));
+}
+
+export function resizeWindowHeight(window: BrowserWindow, nextHeight: number): void {
+  const { width, x, y } = window.getBounds();
+  const config = getConfig();
+  const display = screen.getDisplayMatching(window.getBounds());
+  const minHeight = getMinimumWindowHeight(config.compactMode);
+  const maxHeight = Math.max(minHeight, display.workArea.height - 32);
+  const clampedHeight = Math.max(minHeight, Math.min(maxHeight, Math.ceil(nextHeight)));
+
+  if (window.getBounds().height === clampedHeight) {
+    return;
+  }
+
+  window.setBounds({ x, y, width, height: clampedHeight }, true);
+}
+
+export function restoreExpandedBounds(window: BrowserWindow, bounds: Rectangle): void {
+  const current = window.getBounds();
+  const restoredHeight = Math.max(bounds.height, NORMAL_MIN_HEIGHT);
+  window.setBounds(
+    {
+      x: bounds.x,
+      y: bounds.y,
+      width: bounds.width,
+      height: restoredHeight,
+    },
+    true,
+  );
+
+  if (current.width !== bounds.width) {
+    window.setSize(bounds.width, restoredHeight, true);
+  }
+}
+
 export function applyWindowPreferences(window: BrowserWindow): void {
   const config = getConfig();
   window.setOpacity(config.opacity);
+  applyMinimumWindowSize(window, config.compactMode);
+
+  if (!config.compactMode && window.getBounds().height < NORMAL_MIN_HEIGHT) {
+    resizeWindowHeight(window, NORMAL_MIN_HEIGHT);
+  }
 
   // Three-state window mode:
   //   desktop  — pinned to the macOS desktop layer (behind app windows), like the native Weather widget.
@@ -73,8 +125,8 @@ export function createMainWindow(startHidden = false): BrowserWindow {
     height: bounds.height,
     x: bounds.x,
     y: bounds.y,
-    minWidth: 380,
-    minHeight: 420,
+    minWidth: MIN_WINDOW_WIDTH,
+    minHeight: getMinimumWindowHeight(getConfig().compactMode),
     frame: false,
     transparent: true,
     hasShadow: false,
