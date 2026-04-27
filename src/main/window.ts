@@ -91,18 +91,20 @@ export function applyWindowPreferences(window: BrowserWindow): void {
   }
 
   // Three-state window mode:
-  //   desktop  — pinned to the macOS desktop layer (behind app windows), like the native Weather widget.
+  //   desktop  — best-effort wallpaper-like mode: behind app windows, visible across spaces.
   //   floating — always on top of other windows.
   //   normal   — regular window behavior in the z-order.
   if (process.platform === "darwin") {
-    if (config.windowMode === "desktop") {
-      window.setAlwaysOnTop(true, "desktop");
-    } else if (config.windowMode === "floating") {
+    if (config.windowMode === "floating") {
       window.setAlwaysOnTop(true, "floating");
+      window.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: false });
+    } else if (config.windowMode === "desktop") {
+      window.setAlwaysOnTop(false);
+      window.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: false });
     } else {
       window.setAlwaysOnTop(false);
+      window.setVisibleOnAllWorkspaces(false);
     }
-    window.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: false });
   } else if (process.platform === "win32") {
     // Electron does not expose a stable HWND-to-Progman desktop-parent API, so
     // on Windows "desktop" degrades to a non-topmost floating window.
@@ -138,7 +140,6 @@ export function createMainWindow(startHidden = false): BrowserWindow {
     acceptFirstMouse: true,
     ...(process.platform === "darwin"
       ? {
-          type: "panel" as const,
           vibrancy: "under-window" as const,
           visualEffectState: "active" as const,
         }
